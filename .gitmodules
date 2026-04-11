@@ -1,0 +1,15 @@
+[submodule "dependencies/osqp"]
+	path = dependencies/osqp
+	url = https://github.com/osqp/osqp.git
+[submodule "dependencies/osqp-eigen"]
+	path = dependencies/osqp-eigen
+	url = https://github.com/robotology/osqp-eigen.git
+[submodule "dependencies/qpmad"]
+	path = dependencies/qpmad
+	url = https://github.com/asherikov/qpmad.git
+[submodule "dependencies/g2o"]
+	path = dependencies/g2o
+	url = https://github.com/ka-raceing/g2o.git
+[submodule "dependencies/GSL"]
+	path = dependencies/GSL
+	url = https://github.com/ka-raceing/GSL
