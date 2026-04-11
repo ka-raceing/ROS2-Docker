@@ -59,7 +59,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # User Setup
 #-------------------------------------------------
 
-RUN groupadd --gid "${USER_GID}" "${USERNAME}" && \
+RUN if getent group "${USER_GID}" >/dev/null; then \
+        EXISTING_GROUP="$(getent group "${USER_GID}" | cut -d: -f1)"; \
+    else \
+        groupadd --gid "${USER_GID}" "${USERNAME}"; \
+        EXISTING_GROUP="${USERNAME}"; \
+    fi && \
     useradd --uid "${USER_UID}" --gid "${USER_GID}" -m -s /bin/bash "${USERNAME}" && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
