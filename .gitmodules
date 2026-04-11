@@ -12,4 +12,4 @@
 	url = https://github.com/ka-raceing/g2o.git
 [submodule "dependencies/GSL"]
 	path = dependencies/GSL
-	url = https://github.com/ka-raceing/GSL
+	url = https://github.com/ka-raceing/GSL.git
