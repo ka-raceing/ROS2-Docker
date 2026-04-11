@@ -47,21 +47,24 @@ RUN apt-get update && apt-get install --install-recommends -y \
 
 # osqp
 COPY dependencies/osqp /tmp/osqp
-WORKDIR /tmp/osqp
-RUN mkdir build && cd build &&
+RUN mkdir /tmp/osqp/build
+WORKDIR /tmp/osqp/build
 RUN cmake .. && cmake --build . && cmake --install .
+RUN ldconfig
 
 # osqp-eigen
 COPY dependencies/osqp-eigen /tmp/osqp-eigen
-WORKDIR /tmp/osqp-eigen
-RUN mkdir build && cd build &&
+RUN mkdir /tmp/osqp-eigen/build
+WORKDIR /tmp/osqp-eigen/build
 RUN cmake .. && cmake --build . && cmake --install .
+RUN ldconfig
 
 # qpmad
 COPY dependencies/qpmad /tmp/qpmad
-WORKDIR /tmp/qpmad
-RUN mkdir build && cd build &&
+RUN mkdir /tmp/qpmad/build
+WORKDIR /tmp/qpmad/build
 RUN cmake .. && cmake --build . && cmake --install .
+RUN ldconfig
 
 #-------------------------------------------------
 # GraphSLAM Dependencies
@@ -72,12 +75,14 @@ COPY dependencies/g2o /tmp/g2o
 RUN mkdir /tmp/g2o/build
 WORKDIR /tmp/g2o/build
 RUN cmake .. && make -j3 && make install
+RUN ldconfig
 
 # mrpt
 RUN add-apt-repository -y ppa:joseluisblancoc/mrpt-stable
 RUN apt-get update && apt-get install -y \
     libmrpt-dev \
-    mrpt-apps
+    mrpt-apps \
+    && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # Controller Dependencies
@@ -89,15 +94,23 @@ WORKDIR /tmp/gsl
 RUN ./autogen.sh
 RUN ./configure
 RUN make -j3 && make install
+RUN ldconfig
+
+# Refresh linker cache after all installs
+RUN ldconfig
 
 #-------------------------------------------------
 # Project Environment Setup
 #-------------------------------------------------
 
-# Shell setup
 COPY .bash_aliases /root/.bash_aliases
-RUN sed -i 's/#force_color_prompt=yes/force_color_prompt=yes/' /root/.bashrc
-RUN echo "source scripts/source_env.sh" >> /root/.bashrc
 
-WORKDIR /
+RUN echo 'source /opt/ros/jazzy/setup.bash' >> /root/.bashrc && \
+    echo 'if [ -f /root/driverless/driverless_ws/install/setup.bash ]; then source /root/driverless/driverless_ws/install/setup.bash; fi' >> /root/.bashrc && \
+    echo 'export ROS_DOMAIN_ID=26' >> /root/.bashrc && \
+    echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"' >> /root/.bashrc && \
+    sed -i 's/#force_color_prompt=yes/force_color_prompt=yes/' /root/.bashrc
+
+RUN mkdir -p /root/driverless/driverless_ws
+WORKDIR /root/driverless/driverless_ws
 CMD ["bash"]
