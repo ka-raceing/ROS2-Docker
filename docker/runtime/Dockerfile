@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gfortran \
     iproute2 \
     libeigen3-dev \
+    libfreeimage-dev \
     libqglviewer-dev-qt5 \
     libspdlog-dev \
     libsuitesparse-dev \
