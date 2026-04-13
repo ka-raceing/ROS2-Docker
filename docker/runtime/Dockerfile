@@ -1,4 +1,4 @@
-FROM osrf/ros:jazzy-ros-base
+FROM ros:jazzy-ros-core
 
 ARG DEBIAN_FRONTEND=noninteractive
 
