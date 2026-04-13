@@ -32,19 +32,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     python-is-python3 \
     python3-colcon-common-extensions \
+    python3-matplotlib \
+    python3-numpy \
+    python3-pip \
+    python3-sklearn \
+    ros-dev-tools \
     ros-jazzy-foxglove-bridge \
+    ros-jazzy-message-filters \
     ros-jazzy-rmw-cyclonedds-cpp \
+    ros-jazzy-pcl-ros \
     ros-jazzy-ros2bag \
     ros-jazzy-rosbag2-storage-default-plugins \
-    software-properties-common
-
-# ROS 2 Dependencies
-RUN rosdep init
-RUN rosdep update
-RUN rosdep install --from-paths ${DRIVERLESS_WS}/src --ignore-src -r -y
- 
-# Clean up apt cache to reduce image size
-RUN rm -rf /var/lib/apt/lists/*
+    ros-jazzy-rviz-common \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # SHELL Environment Setup
