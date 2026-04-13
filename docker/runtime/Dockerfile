@@ -16,6 +16,7 @@ ENV RCUTILS_COLORIZED_OUTPUT=1
 # Base Runtime Setup
 #-------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    automake \
     bash-completion \
     can-utils \
     cmake \
