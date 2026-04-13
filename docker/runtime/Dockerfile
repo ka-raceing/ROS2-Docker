@@ -45,8 +45,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ros2bag \
     ros-jazzy-rosbag2-storage-default-plugins \
     ros-jazzy-rviz-common \
-    software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
+    software-properties-common
+    #&& rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # SHELL Environment Setup
