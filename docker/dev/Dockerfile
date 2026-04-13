@@ -82,6 +82,9 @@ RUN echo '' >> /home/${USERNAME}/.bashrc && \
     echo '[ -f "${DRIVERLESS_WS}/install/setup.bash" ] && source "${DRIVERLESS_WS}/install/setup.bash"' >> /home/${USERNAME}/.bashrc && \
     echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /home/${USERNAME}/.bashrc
 
+# Enable colored bash prompt
+RUN sed -i 's/#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc
+
 # Ensure ~/.bashrc is owned by the non-root user
 RUN chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
 
