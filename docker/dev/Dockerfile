@@ -7,7 +7,11 @@ ARG USER_GID=1000
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+ENV DRIVERLESS_ROOT=/workspaces/driverless
+ENV DRIVERLESS_WS=${DRIVERLESS_ROOT}/driverless_ws
+
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV ROS_DOMAIN_ID=26
 
 #-------------------------------------------------
 # Base Development Setup
@@ -56,9 +60,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
-# User Setup
+# SHELL Environment Setup
 #-------------------------------------------------
 
+# User Setup (Reuse existing UID/GID 1000 from base image)
 RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
     EXISTING_GROUP="$(getent group "${USER_GID}" | cut -d: -f1)" && \
     usermod -l "${USERNAME}" "${EXISTING_USER}" && \
@@ -68,10 +73,17 @@ RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
 
-RUN echo 'source /opt/ros/jazzy/setup.bash' >> /home/${USERNAME}/.bashrc && \
+# Configure Shell Startup
+RUN echo '' >> /home/${USERNAME}/.bashrc && \
+    echo '# Driverless Environment' >> /home/${USERNAME}/.bashrc && \
+    echo 'source /opt/ros/jazzy/setup.bash' >> /home/${USERNAME}/.bashrc && \
     echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"' >> /home/${USERNAME}/.bashrc && \
     echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/${USERNAME}/.bashrc && \
-    chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
+    echo '[ -f "${DRIVERLESS_WS}/install/setup.bash" ] && source "${DRIVERLESS_WS}/install/setup.bash"' >> /home/${USERNAME}/.bashrc && \
+    echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /home/${USERNAME}/.bashrc
+
+# Ensure ~/.bashrc is owned by the non-root user
+RUN chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
 
 #-------------------------------------------------
 # General Dependencies
@@ -139,6 +151,6 @@ RUN ldconfig
 #-------------------------------------------------
 
 USER ${USERNAME}
-WORKDIR /home/${USERNAME}
+WORKDIR ${DRIVERLESS_WS}
 
 CMD ["bash"]
