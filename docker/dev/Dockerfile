@@ -12,6 +12,8 @@ ENV DRIVERLESS_WS=${DRIVERLESS_ROOT}/driverless_ws
 
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV ROS_DOMAIN_ID=26
+ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
+ENV RCUTILS_COLORIZED_OUTPUT=1
 
 #-------------------------------------------------
 # Base Development Setup
@@ -77,8 +79,6 @@ RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
 RUN echo '' >> /home/${USERNAME}/.bashrc && \
     echo '# Driverless Environment' >> /home/${USERNAME}/.bashrc && \
     echo 'source /opt/ros/jazzy/setup.bash' >> /home/${USERNAME}/.bashrc && \
-    echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"' >> /home/${USERNAME}/.bashrc && \
-    echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/${USERNAME}/.bashrc && \
     echo '[ -f "${DRIVERLESS_WS}/install/setup.bash" ] && source "${DRIVERLESS_WS}/install/setup.bash"' >> /home/${USERNAME}/.bashrc && \
     echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /home/${USERNAME}/.bashrc
 
