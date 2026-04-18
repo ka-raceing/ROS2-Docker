@@ -7,7 +7,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DRIVERLESS_ROOT=/workspaces/driverless
 ENV DRIVERLESS_WS=${DRIVERLESS_ROOT}/driverless_ws
 
-ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV ROS_DOMAIN_ID=26
 ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
 ENV RCUTILS_COLORIZED_OUTPUT=1
@@ -45,8 +45,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ros2bag \
     ros-jazzy-rosbag2-storage-default-plugins \
     ros-jazzy-rviz-common \
-    software-properties-common
-    #&& rm -rf /var/lib/apt/lists/*
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # SHELL Environment Setup
