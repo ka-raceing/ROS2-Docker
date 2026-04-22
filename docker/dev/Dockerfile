@@ -10,7 +10,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DRIVERLESS_ROOT=/workspaces/driverless
 ENV DRIVERLESS_WS=${DRIVERLESS_ROOT}/driverless_ws
 
-ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV ROS_DOMAIN_ID=26
 ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
 ENV RCUTILS_COLORIZED_OUTPUT=1
