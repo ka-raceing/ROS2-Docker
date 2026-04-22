@@ -14,7 +14,7 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV ROS_DOMAIN_ID=26
 ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
 ENV RCUTILS_COLORIZED_OUTPUT=1
-ENV CYCLONEDDS_URI=file://${DRIVERLESS_ROOT}/cyclonedss.xml
+ENV CYCLONEDDS_URI=file://${DRIVERLESS_ROOT}/cyclonedds.xml
 
 #-------------------------------------------------
 # Base Development Setup
