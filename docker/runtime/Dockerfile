@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-sklearn \
     ros-dev-tools \
+    ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
     ros-jazzy-message-filters \
     ros-jazzy-rmw-cyclonedds-cpp \

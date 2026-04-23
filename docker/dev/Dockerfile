@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qt5-qmake \
     qtdeclarative5-dev \
     ros-dev-tools \
+    ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
     ros-jazzy-rmw-cyclonedds-cpp \
     software-properties-common \
