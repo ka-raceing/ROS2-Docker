@@ -98,7 +98,8 @@ RUN cmake -S /tmp/qpmad -B /tmp/qpmad/build -DCMAKE_BUILD_TYPE=Release && \
 # Ipopt
 COPY dependencies/Ipopt /tmp/Ipopt
 COPY dependencies/ThirdParty-HSL /tmp/Ipopt/ThirdParty-HSL
-RUN tar -xzf dependencies/other/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-HSL && \
+COPY dependencies/other/coinhsl.tar.gz /tmp/Ipopt/ThirdParty-HSL/
+RUN tar -xzf /tmp/Ipopt/ThirdParty-HSL/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-HSL && \
     cd /tmp/Ipopt/ThirdParty-HSL && \
     ./configure && \
     make -j"$(nproc)" && \
