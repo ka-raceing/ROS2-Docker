@@ -63,6 +63,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     vim \
     wget \
+    patch \
+    liblapack-dev \
+    libmetis-dev \
     && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
@@ -119,6 +122,21 @@ RUN cmake -S /tmp/qpmad -B /tmp/qpmad/build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build /tmp/qpmad/build -j"$(nproc)" && \
     cmake --install /tmp/qpmad/build && \
     rm -rf /tmp/qpmad
+
+# Ipopt
+COPY dependencies/Ipopt /tmp/Ipopt
+COPY dependencies/ThirdParty-HSL /tmp/Ipopt/ThirdParty-HSL
+RUN tar -xzf dependencies/other/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-HSL && \
+    cd /tmp/Ipopt/ThirdParty-HSL && \
+    ./configure && \
+    make -j"$(nproc)" && \
+    make install && \
+    cd .. && \
+    ./configure && \
+    mkdir build && \
+    make -j"$(nproc)" && \
+    make install && \
+    rm -rf /tmp/Ipopt
 
 #-------------------------------------------------
 # GraphSLAM Dependencies

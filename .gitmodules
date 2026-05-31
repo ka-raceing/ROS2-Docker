@@ -13,3 +13,9 @@
 [submodule "dependencies/GSL"]
 	path = dependencies/GSL
 	url = https://github.com/ka-raceing/GSL.git
+[submodule "dependencies/Ipopt"]
+	path = dependencies/Ipopt
+	url = https://github.com/coin-or/Ipopt.git
+[submodule "dependencies/ThirdParty-HSL"]
+	path = dependencies/ThirdParty-HSL
+	url = https://github.com/coin-or-tools/ThirdParty-HSL.git
