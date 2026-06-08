@@ -19,3 +19,6 @@
 [submodule "dependencies/ThirdParty-HSL"]
 	path = dependencies/ThirdParty-HSL
 	url = https://github.com/coin-or-tools/ThirdParty-HSL.git
+[submodule "dependencies/acados"]
+	path = dependencies/acados
+	url = https://github.com/acados/acados.git
