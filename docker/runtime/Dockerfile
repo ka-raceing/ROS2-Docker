@@ -184,7 +184,7 @@ RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
     curl -L -o "${ACADOS_SOURCE_DIR}/bin/t_renderer" \
         "https://github.com/acados/tera_renderer/releases/download/${TERA_RENDERER_VERSION}/t_renderer-${TERA_RENDERER_VERSION}-linux-amd64" && \
     chmod +x "${ACADOS_SOURCE_DIR}/bin/t_renderer" && \
-    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')" && \
+    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')"
 
 
 # Refresh linker cache after all installs
