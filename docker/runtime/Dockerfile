@@ -49,6 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-numpy \
     python3-pip \
     python3-sklearn \
+    python3-venv \
     ros-dev-tools \
     ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
