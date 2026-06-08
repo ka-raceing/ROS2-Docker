@@ -4,6 +4,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
+ARG TERA_RENDERER_VERSION=v0.2.0
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -17,6 +18,12 @@ ENV ROS_DOMAIN_ID=20
 ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
 ENV RCUTILS_COLORIZED_OUTPUT=1
 ENV CYCLONEDDS_URI=file://${DRIVERLESS_ROOT}/cyclonedds.xml
+
+# acados / CasADi
+ENV ACADOS_SOURCE_DIR=/opt/acados
+ENV ACADOS_SOLVER_DIR=${DRIVERLESS_WS}/src/control/controller/src/lateral_control/generated/acados
+ENV ACADOS_PYTHON_ENV=/opt/acados-venv
+ENV LD_LIBRARY_PATH=${ACADOS_SOURCE_DIR}/lib:${ACADOS_SOLVER_DIR}:/usr/local/lib
 
 #-------------------------------------------------
 # Base Development Setup
@@ -48,6 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     python-is-python3 \
     python3-colcon-common-extensions \
+    python3-dev \
     python3-matplotlib \
     python3-numpy \
     python3-pip \
@@ -87,7 +95,8 @@ RUN echo '' >> /home/${USERNAME}/.bashrc && \
     echo '# Driverless Environment' >> /home/${USERNAME}/.bashrc && \
     echo 'source /opt/ros/jazzy/setup.bash' >> /home/${USERNAME}/.bashrc && \
     echo '[ -f "${DRIVERLESS_WS}/install/setup.bash" ] && source "${DRIVERLESS_WS}/install/setup.bash"' >> /home/${USERNAME}/.bashrc && \
-    echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /home/${USERNAME}/.bashrc
+    echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /home/${USERNAME}/.bashrc && \
+    echo 'export LD_LIBRARY_PATH="${ACADOS_SOURCE_DIR}/lib:${ACADOS_SOLVER_DIR}:/usr/local/lib:${LD_LIBRARY_PATH}"' >> /home/${USERNAME}/.bashrc
 
 # Enable colored bash prompt
 RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc
@@ -171,6 +180,38 @@ RUN cd /tmp/gsl && \
     make install && \
     cd / && \
     rm -rf /tmp/gsl
+
+# acados core library + Python interface.
+COPY dependencies/acados /opt/acados
+RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DACADOS_INSTALL_DIR="${ACADOS_SOURCE_DIR}" \
+        -DACADOS_WITH_QPOASES=ON \
+        -DACADOS_WITH_OSQP=OFF \
+        -DACADOS_EXAMPLES=OFF \
+        -DACADOS_UNIT_TESTS=OFF && \
+    cmake --build "${ACADOS_SOURCE_DIR}/build" -j"$(nproc)" && \
+    cmake --install "${ACADOS_SOURCE_DIR}/build" && \
+    rm -rf "${ACADOS_SOURCE_DIR}/build"
+
+# CasADi is installed into a dedicated venv so it does not pollute the ROS Python environment.
+RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
+    "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir --upgrade pip setuptools wheel && \
+    "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir \
+        casadi \
+        numpy \
+        scipy \
+        matplotlib \
+        pyyaml \
+        jinja2 \
+        future && \
+    "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir -e "${ACADOS_SOURCE_DIR}/interfaces/acados_template" && \
+    mkdir -p "${ACADOS_SOURCE_DIR}/bin" && \
+    curl -L -o "${ACADOS_SOURCE_DIR}/bin/t_renderer" \
+        "https://github.com/acados/tera_renderer/releases/download/${TERA_RENDERER_VERSION}/t_renderer-${TERA_RENDERER_VERSION}-linux-amd64" && \
+    chmod +x "${ACADOS_SOURCE_DIR}/bin/t_renderer" && \
+    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')" && \
+    chown -R "${USERNAME}:${USERNAME}" "${ACADOS_SOURCE_DIR}" "${ACADOS_PYTHON_ENV}"
 
 # Refresh linker cache after all installs
 RUN ldconfig
