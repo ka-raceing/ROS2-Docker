@@ -85,6 +85,9 @@ RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /roo
 # General Dependencies
 #-------------------------------------------------
 
+# mcap cli
+COPY dependencies/other/mcap-linux-amd64 /usr/local/bin/mcap
+
 # osqp
 COPY dependencies/osqp /tmp/osqp
 RUN cmake -S /tmp/osqp -B /tmp/osqp/build -DCMAKE_BUILD_TYPE=Release && \

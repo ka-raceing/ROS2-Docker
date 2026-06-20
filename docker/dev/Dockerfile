@@ -111,6 +111,9 @@ RUN chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
 COPY dependencies/debs /tmp/debs
 RUN dpkg -i /tmp/debs/ros-jazzy-rviz-2d-plot-plugin_0.2.0-0noble_amd64.deb && rm -rf /tmp/debs
 
+# mcap cli
+COPY dependencies/other/mcap-linux-amd64 /usr/local/bin/mcap
+
 # osqp
 COPY dependencies/osqp /tmp/osqp
 RUN cmake -S /tmp/osqp -B /tmp/osqp/build -DCMAKE_BUILD_TYPE=Release && \
