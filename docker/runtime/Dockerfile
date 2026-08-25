@@ -53,6 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-dev-tools \
     ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
+    ros-jazzy-generate-parameter-library \
     ros-jazzy-message-filters \
     ros-jazzy-rmw-cyclonedds-cpp \
     ros-jazzy-pcl-ros \

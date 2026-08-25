@@ -66,6 +66,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-dev-tools \
     ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
+    ros-jazzy-generate-parameter-library \
     ros-jazzy-rmw-cyclonedds-cpp \
     software-properties-common \
     sudo \
