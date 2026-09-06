@@ -12,7 +12,7 @@
 # usermod/chown re-own /home/as; bind-mount only under /workspaces and /data, never inside the home.
 set -e
 if [ "$(id -u)" = 0 ]; then
-    if [ -n "${HOST_UID:-}" ] && [ "${HOST_UID}" != "$(id -u as)" ]; then
+    if [ -n "${HOST_UID:-}" ] && { [ "${HOST_UID}" != "$(id -u as)" ] || [ "${HOST_GID:-$HOST_UID}" != "$(id -g as)" ]; }; then
         echo "entrypoint: renumbering as to ${HOST_UID}:${HOST_GID:-$HOST_UID}" >&2
         groupmod -g "${HOST_GID:-$HOST_UID}" as
         usermod -u "${HOST_UID}" -g "${HOST_GID:-$HOST_UID}" as
@@ -25,5 +25,8 @@ fi
 source /opt/ros/jazzy/setup.bash --
 if [ -n "${DRIVERLESS_WS:-}" ] && [ -f "${DRIVERLESS_WS}/install/setup.bash" ]; then
     source "${DRIVERLESS_WS}/install/setup.bash" --
+fi
+if [ -n "${DRIVERLESS_ROOT:-}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/env.sh" ]; then
+    source "${DRIVERLESS_ROOT}/scripts/env.sh" --
 fi
 exec "$@"

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ghcr.io/ka-raceing/ros2-driverless
 #
 # One image for laptops (VS Code Dev Containers), CI and the car. It carries the toolchain and the
@@ -94,45 +95,49 @@ RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
 # General Dependencies
 #-------------------------------------------------
 
-COPY dependencies/debs /tmp/debs
-RUN dpkg -i /tmp/debs/ros-jazzy-rviz-2d-plot-plugin_0.2.0-0noble_amd64.deb && rm -rf /tmp/debs
+RUN --mount=type=bind,source=dependencies/debs,target=/tmp/debs \
+    dpkg -i /tmp/debs/ros-jazzy-rviz-2d-plot-plugin_0.2.0-0noble_amd64.deb
 
 # mcap cli
 COPY dependencies/other/mcap-linux-amd64 /usr/local/bin/mcap
 
 # osqp
-COPY dependencies/osqp /tmp/osqp
-RUN cmake -S /tmp/osqp -B /tmp/osqp/build -DCMAKE_BUILD_TYPE=Release && \
+RUN --mount=type=bind,source=dependencies/osqp,target=/src/osqp \
+    cp -r /src/osqp /tmp/osqp && \
+    cmake -S /tmp/osqp -B /tmp/osqp/build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build /tmp/osqp/build -j"$(nproc)" && \
     cmake --install /tmp/osqp/build && \
     rm -rf /tmp/osqp
 
 # osqp-eigen
-COPY dependencies/osqp-eigen /tmp/osqp-eigen
-RUN cmake -S /tmp/osqp-eigen -B /tmp/osqp-eigen/build -DCMAKE_BUILD_TYPE=Release && \
+RUN --mount=type=bind,source=dependencies/osqp-eigen,target=/src/osqp-eigen \
+    cp -r /src/osqp-eigen /tmp/osqp-eigen && \
+    cmake -S /tmp/osqp-eigen -B /tmp/osqp-eigen/build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build /tmp/osqp-eigen/build -j"$(nproc)" && \
     cmake --install /tmp/osqp-eigen/build && \
     rm -rf /tmp/osqp-eigen
 
 # qpmad
-COPY dependencies/qpmad /tmp/qpmad
-RUN cmake -S /tmp/qpmad -B /tmp/qpmad/build -DCMAKE_BUILD_TYPE=Release && \
+RUN --mount=type=bind,source=dependencies/qpmad,target=/src/qpmad \
+    cp -r /src/qpmad /tmp/qpmad && \
+    cmake -S /tmp/qpmad -B /tmp/qpmad/build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build /tmp/qpmad/build -j"$(nproc)" && \
     cmake --install /tmp/qpmad/build && \
     rm -rf /tmp/qpmad
 
 # Ipopt
-COPY dependencies/Ipopt /tmp/Ipopt
-COPY dependencies/ThirdParty-HSL /tmp/Ipopt/ThirdParty-HSL
-COPY dependencies/other/coinhsl.tar.gz /tmp/Ipopt/ThirdParty-HSL/
-RUN tar -xzf /tmp/Ipopt/ThirdParty-HSL/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-HSL && \
+RUN --mount=type=bind,source=dependencies/Ipopt,target=/src/Ipopt \
+    --mount=type=bind,source=dependencies/ThirdParty-HSL,target=/src/ThirdParty-HSL \
+    --mount=type=bind,source=dependencies/other/coinhsl.tar.gz,target=/src/coinhsl.tar.gz \
+    cp -r /src/Ipopt /tmp/Ipopt && \
+    cp -r /src/ThirdParty-HSL /tmp/Ipopt/ThirdParty-HSL && \
+    tar -xzf /src/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-HSL && \
     cd /tmp/Ipopt/ThirdParty-HSL && \
     ./configure && \
     make -j"$(nproc)" && \
     make install && \
     cd .. && \
     ./configure && \
-    mkdir build && \
     make -j"$(nproc)" && \
     make install && \
     rm -rf /tmp/Ipopt
@@ -142,8 +147,9 @@ RUN tar -xzf /tmp/Ipopt/ThirdParty-HSL/coinhsl.tar.gz -C /tmp/Ipopt/ThirdParty-H
 #-------------------------------------------------
 
 # g2o
-COPY dependencies/g2o /tmp/g2o
-RUN cmake -S /tmp/g2o -B /tmp/g2o/build -DCMAKE_BUILD_TYPE=Release && \
+RUN --mount=type=bind,source=dependencies/g2o,target=/src/g2o \
+    cp -r /src/g2o /tmp/g2o && \
+    cmake -S /tmp/g2o -B /tmp/g2o/build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build /tmp/g2o/build -j"$(nproc)" && \
     cmake --install /tmp/g2o/build && \
     rm -rf /tmp/g2o
@@ -161,8 +167,9 @@ RUN add-apt-repository -y ppa:joseluisblancoc/mrpt-stable && \
 #-------------------------------------------------
 
 # GSL
-COPY dependencies/GSL /tmp/gsl
-RUN cd /tmp/gsl && \
+RUN --mount=type=bind,source=dependencies/GSL,target=/src/gsl \
+    cp -r /src/gsl /tmp/gsl && \
+    cd /tmp/gsl && \
     ./autogen.sh && \
     ./configure && \
     make -j"$(nproc)" && \
@@ -171,8 +178,10 @@ RUN cd /tmp/gsl && \
     rm -rf /tmp/gsl
 
 # acados core library + Python interface
-COPY dependencies/acados /opt/acados
-RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
+# Only lib/, include/, interfaces/ and bin/ are needed afterwards; the rest of the tree is dropped.
+RUN --mount=type=bind,source=dependencies/acados,target=/src/acados \
+    cp -r /src/acados "${ACADOS_SOURCE_DIR}" && \
+    cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
         -DCMAKE_BUILD_TYPE=Release \
         -DACADOS_INSTALL_DIR="${ACADOS_SOURCE_DIR}" \
         -DACADOS_WITH_QPOASES=ON \
@@ -181,7 +190,8 @@ RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
         -DACADOS_UNIT_TESTS=OFF && \
     cmake --build "${ACADOS_SOURCE_DIR}/build" -j"$(nproc)" && \
     cmake --install "${ACADOS_SOURCE_DIR}/build" && \
-    rm -rf "${ACADOS_SOURCE_DIR}/build"
+    rm -rf "${ACADOS_SOURCE_DIR}/build" "${ACADOS_SOURCE_DIR}"/examples "${ACADOS_SOURCE_DIR}"/test \
+           "${ACADOS_SOURCE_DIR}"/docs "${ACADOS_SOURCE_DIR}"/external "${ACADOS_SOURCE_DIR}"/.git*
 
 # CasADi is installed into a dedicated venv
 RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
@@ -199,11 +209,10 @@ RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
         future==1.0.0 && \
     "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir -e "${ACADOS_SOURCE_DIR}/interfaces/acados_template" && \
     mkdir -p "${ACADOS_SOURCE_DIR}/bin" && \
-    curl -L -o "${ACADOS_SOURCE_DIR}/bin/t_renderer" \
+    curl -fsSL -o "${ACADOS_SOURCE_DIR}/bin/t_renderer" \
         "https://github.com/acados/tera_renderer/releases/download/${TERA_RENDERER_VERSION}/t_renderer-${TERA_RENDERER_VERSION}-linux-amd64" && \
     chmod +x "${ACADOS_SOURCE_DIR}/bin/t_renderer" && \
-    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')" && \
-    chown -R "${USERNAME}:${USERNAME}" "${ACADOS_SOURCE_DIR}" "${ACADOS_PYTHON_ENV}"
+    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')"
 
 # Make the acados library visible to the dynamic linker without LD_LIBRARY_PATH
 RUN echo "${ACADOS_SOURCE_DIR}/lib" > /etc/ld.so.conf.d/acados.conf && ldconfig
@@ -215,7 +224,6 @@ RUN echo "${ACADOS_SOURCE_DIR}/lib" > /etc/ld.so.conf.d/acados.conf && ldconfig
 # Image tag shown in the shell prompt.
 ARG IMAGE_TAG=dev
 ENV DRIVERLESS_IMAGE=ros2-driverless:${IMAGE_TAG}
-ENV DRIVERLESS_USER=${USERNAME}
 
 # ~/.bashrc sources ROS and, when DRIVERLESS_WS is set and built, the workspace for interactive
 # shells (docker exec); the entrypoint does the same for the container command. DRIVERLESS_WS /
@@ -226,6 +234,9 @@ RUN cat >> "/home/${USERNAME}/.bashrc" <<'EOF'
 source /opt/ros/jazzy/setup.bash
 if [ -n "${DRIVERLESS_WS}" ] && [ -f "${DRIVERLESS_WS}/install/setup.bash" ]; then
     source "${DRIVERLESS_WS}/install/setup.bash"
+fi
+if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/env.sh" ]; then
+    source "${DRIVERLESS_ROOT}/scripts/env.sh"
 fi
 if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ]; then
     source "${DRIVERLESS_ROOT}/scripts/aliases.sh"
