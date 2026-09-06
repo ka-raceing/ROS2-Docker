@@ -77,10 +77,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
-# SHELL Environment Setup
+# User Setup
 #-------------------------------------------------
 
-# User Setup (rename the base image's uid/gid 1000 user; the entrypoint re-maps the ids at start)
+# Rename the base image's uid/gid 1000 user; the entrypoint re-maps the ids at container start
 RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
     EXISTING_GROUP="$(getent group "${USER_GID}" | cut -d: -f1)" && \
     usermod -l "${USERNAME}" "${EXISTING_USER}" && \
@@ -89,27 +89,6 @@ RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
     usermod -g "${USERNAME}" "${USERNAME}" && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
-
-# Configure Shell Startup. DRIVERLESS_WS / DRIVERLESS_ROOT are not set by the image; they come
-# from the consumer (devcontainer.json, compose.yaml) and are only used when present.
-RUN cat >> "/home/${USERNAME}/.bashrc" <<'EOF'
-
-# Driverless Environment
-source /opt/ros/jazzy/setup.bash
-if [ -n "${DRIVERLESS_WS}" ] && [ -f "${DRIVERLESS_WS}/install/setup.bash" ]; then
-    source "${DRIVERLESS_WS}/install/setup.bash"
-fi
-if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ]; then
-    source "${DRIVERLESS_ROOT}/scripts/aliases.sh"
-fi
-PS1="[${DRIVERLESS_IMAGE}] ${PS1}"
-EOF
-
-# Enable colored bash prompt
-RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc
-
-# Ensure ~/.bashrc is owned by the non-root user
-RUN chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
 
 #-------------------------------------------------
 # General Dependencies
@@ -191,7 +170,7 @@ RUN cd /tmp/gsl && \
     cd / && \
     rm -rf /tmp/gsl
 
-# acados core library + Python interface.
+# acados core library + Python interface
 COPY dependencies/acados /opt/acados
 RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
         -DCMAKE_BUILD_TYPE=Release \
@@ -204,8 +183,7 @@ RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
     cmake --install "${ACADOS_SOURCE_DIR}/build" && \
     rm -rf "${ACADOS_SOURCE_DIR}/build"
 
-# CasADi is installed into a dedicated venv so it does not pollute the ROS Python environment.
-# Versions pinned to what resolved on 2026-09-06; bump deliberately.
+# CasADi is installed into a dedicated venv
 RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
     "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir --upgrade \
         pip==26.2.1 \
@@ -227,22 +205,39 @@ RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
     "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')" && \
     chown -R "${USERNAME}:${USERNAME}" "${ACADOS_SOURCE_DIR}" "${ACADOS_PYTHON_ENV}"
 
-# Make the acados library visible to the dynamic linker without LD_LIBRARY_PATH, then refresh the
-# linker cache after all installs.
+# Make the acados library visible to the dynamic linker without LD_LIBRARY_PATH
 RUN echo "${ACADOS_SOURCE_DIR}/lib" > /etc/ld.so.conf.d/acados.conf && ldconfig
 
 #-------------------------------------------------
-# Runtime Setup
+# Shell and Entrypoint Setup
 #-------------------------------------------------
 
-# Image tag shown in the shell prompt. Declared last so a changing tag only rebuilds these layers.
+# Image tag shown in the shell prompt.
 ARG IMAGE_TAG=dev
 ENV DRIVERLESS_IMAGE=ros2-driverless:${IMAGE_TAG}
 ENV DRIVERLESS_USER=${USERNAME}
 
-# The entrypoint starts as root, aligns ${USERNAME} to HOST_UID/HOST_GID when given and drops
-# privileges to ${USERNAME} before handing over to the ROS entrypoint. No USER instruction here on
-# purpose: the re-mapping needs root.
+# ~/.bashrc sources ROS and, when DRIVERLESS_WS is set and built, the workspace for interactive
+# shells (docker exec); the entrypoint does the same for the container command. DRIVERLESS_WS /
+# DRIVERLESS_ROOT are not set by the image; they come from the consumer.
+RUN cat >> "/home/${USERNAME}/.bashrc" <<'EOF'
+
+# Driverless Environment
+source /opt/ros/jazzy/setup.bash
+if [ -n "${DRIVERLESS_WS}" ] && [ -f "${DRIVERLESS_WS}/install/setup.bash" ]; then
+    source "${DRIVERLESS_WS}/install/setup.bash"
+fi
+if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ]; then
+    source "${DRIVERLESS_ROOT}/scripts/aliases.sh"
+fi
+PS1="[${DRIVERLESS_IMAGE}] ${PS1}"
+EOF
+RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc && \
+    chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
+
+# The entrypoint starts as root, aligns ${USERNAME} to HOST_UID/HOST_GID when given, drops
+# privileges, sources ROS and the workspace and execs the command. No USER instruction on purpose:
+# the renumbering needs root.
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 WORKDIR /home/${USERNAME}

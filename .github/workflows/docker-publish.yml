@@ -43,9 +43,9 @@ jobs:
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       #
-      # `latest` is still published on main but demoted below the sha tag, so that the `version`
-      # output (used for the shell prompt inside the image) is `1.2.3` for a release tag and
-      # `sha-<short>` for a main build, never `latest`.
+      # No `latest`: consumers pin the minor tag (`2.0`), a main build is reachable as
+      # `sha-<short>`. The `version` output feeds the shell prompt inside the image: `2.0.1` for a
+      # release tag, `sha-<short>` for a main build.
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -56,7 +56,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}},priority=50
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
