@@ -71,7 +71,7 @@ git submodule update --init --recursive
 docker build -t ghcr.io/ka-raceing/ros2-driverless:2.0 --build-arg IMAGE_TAG=2.0 -f docker/Dockerfile .
 ```
 
-`IMAGE_TAG` is only shown in the shell prompt. About 20 minutes with a warm cache.
+`IMAGE_TAG` is only shown in the shell prompt (`[dv 2.0.0] as@host:~$`). About 20 minutes with a warm cache.
 
 `ros2-dev:1.8` and `ros2-runtime:1.8` (git tag `v1.8.0`) are the last images of the previous
 two-image layout; nothing new should reference them.

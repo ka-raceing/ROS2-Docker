@@ -241,7 +241,7 @@ fi
 if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ]; then
     source "${DRIVERLESS_ROOT}/scripts/aliases.sh"
 fi
-PS1="[${DRIVERLESS_IMAGE}] ${PS1}"
+PS1="[dv ${DRIVERLESS_IMAGE##*:}] ${PS1}"
 EOF
 RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc && \
     chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
