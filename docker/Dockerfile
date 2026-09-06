@@ -1,40 +1,50 @@
-FROM ros:jazzy-ros-core
+# ghcr.io/ka-raceing/ros2-driverless
+#
+# One image for laptops (VS Code Dev Containers), CI and the car. It carries the toolchain and the
+# third-party dependencies of the driverless stack, but no facts about the driverless repository:
+# where it is mounted, which ROS domain to use and where the DDS config lives are supplied by the
+# consumer (devcontainer.json, .gitlab-ci.yml, compose.yaml) through environment variables.
+#
+# Base image pinned by digest; bump deliberately (see README.md).
+FROM osrf/ros:jazzy-desktop-full@sha256:d16957210572c5f919f3f9bd2fb0cc24a82542647489d8b8eda7c3beda31305f
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG USERNAME=as
+ARG USER_UID=1000
+ARG USER_GID=1000
 ARG TERA_RENDERER_VERSION=v0.2.0
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ENV DRIVERLESS_ROOT=/workspaces/driverless
-ENV DRIVERLESS_WS=${DRIVERLESS_ROOT}/driverless_ws
-ENV BAGS_PATH=/data/bags
-ENV MAPS_PATH=/data/maps
-
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-ENV ROS_DOMAIN_ID=19
 ENV RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}]: {message}"
 ENV RCUTILS_COLORIZED_OUTPUT=1
-ENV CYCLONEDDS_URI=file://${DRIVERLESS_ROOT}/cyclonedds.xml
 
-# acados / CasADi
+# acados / CasADi install locations inside the image.
 ENV ACADOS_SOURCE_DIR=/opt/acados
-ENV ACADOS_SOLVER_DIR=${DRIVERLESS_WS}/src/control/controller/src/lateral_control/generated/acados
 ENV ACADOS_PYTHON_ENV=/opt/acados-venv
-ENV LD_LIBRARY_PATH=${ACADOS_SOURCE_DIR}/lib:${ACADOS_SOLVER_DIR}:/usr/local/lib
 
 #-------------------------------------------------
-# Base Runtime Setup
+# Base Development Setup
 #-------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     automake \
     bash-completion \
+    build-essential \
     can-utils \
+    ccache \
+    clang \
+    clang-format \
+    clang-tidy \
     cmake \
+    cppcheck \
     curl \
+    gdb \
     gfortran \
+    git \
+    htop \
     iproute2 \
     libeigen3-dev \
-    libfreeimage-dev \
     libqglviewer-dev-qt5 \
     libspdlog-dev \
     libsuitesparse-dev \
@@ -50,17 +60,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-sklearn \
     python3-venv \
+    qt5-qmake \
+    qtdeclarative5-dev \
     ros-dev-tools \
     ros-jazzy-domain-bridge \
     ros-jazzy-foxglove-bridge \
     ros-jazzy-generate-parameter-library \
-    ros-jazzy-message-filters \
     ros-jazzy-rmw-cyclonedds-cpp \
-    ros-jazzy-pcl-ros \
-    ros-jazzy-ros2bag \
-    ros-jazzy-rosbag2-storage-default-plugins \
-    ros-jazzy-rviz-common \
     software-properties-common \
+    sudo \
+    vim \
     wget \
     patch \
     liblapack-dev \
@@ -71,20 +80,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # SHELL Environment Setup
 #-------------------------------------------------
 
-# Configure Shell Startup
-RUN echo '' >> /root/.bashrc && \
-    echo '# Driverless Environment' >> /root/.bashrc && \
-    echo 'source /opt/ros/jazzy/setup.bash' >> /root/.bashrc && \
-    echo '[ -f "${DRIVERLESS_WS}/install/setup.bash" ] && source "${DRIVERLESS_WS}/install/setup.bash"' >> /root/.bashrc && \
-    echo '[ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ] && source "${DRIVERLESS_ROOT}/scripts/aliases.sh"' >> /root/.bashrc && \
-    echo 'export LD_LIBRARY_PATH="${ACADOS_SOURCE_DIR}/lib:${ACADOS_SOLVER_DIR}:/usr/local/lib:${LD_LIBRARY_PATH}"' >> /root/.bashrc
+# User Setup (rename the base image's uid/gid 1000 user; the entrypoint re-maps the ids at start)
+RUN EXISTING_USER="$(getent passwd "${USER_UID}" | cut -d: -f1)" && \
+    EXISTING_GROUP="$(getent group "${USER_GID}" | cut -d: -f1)" && \
+    usermod -l "${USERNAME}" "${EXISTING_USER}" && \
+    usermod -d "/home/${USERNAME}" -m "${USERNAME}" && \
+    groupmod -n "${USERNAME}" "${EXISTING_GROUP}" && \
+    usermod -g "${USERNAME}" "${USERNAME}" && \
+    echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
+    chmod 0440 /etc/sudoers.d/${USERNAME}
+
+# Configure Shell Startup. DRIVERLESS_WS / DRIVERLESS_ROOT are not set by the image; they come
+# from the consumer (devcontainer.json, compose.yaml) and are only used when present.
+RUN cat >> "/home/${USERNAME}/.bashrc" <<'EOF'
+
+# Driverless Environment
+source /opt/ros/jazzy/setup.bash
+if [ -n "${DRIVERLESS_WS}" ] && [ -f "${DRIVERLESS_WS}/install/setup.bash" ]; then
+    source "${DRIVERLESS_WS}/install/setup.bash"
+fi
+if [ -n "${DRIVERLESS_ROOT}" ] && [ -f "${DRIVERLESS_ROOT}/scripts/aliases.sh" ]; then
+    source "${DRIVERLESS_ROOT}/scripts/aliases.sh"
+fi
+PS1="[${DRIVERLESS_IMAGE}] ${PS1}"
+EOF
 
 # Enable colored bash prompt
-RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /root/.bashrc
+RUN sed -i 's/^[[:space:]]*#force_color_prompt=yes/force_color_prompt=yes/' /home/${USERNAME}/.bashrc
+
+# Ensure ~/.bashrc is owned by the non-root user
+RUN chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
 
 #-------------------------------------------------
 # General Dependencies
 #-------------------------------------------------
+
+COPY dependencies/debs /tmp/debs
+RUN dpkg -i /tmp/debs/ros-jazzy-rviz-2d-plot-plugin_0.2.0-0noble_amd64.deb && rm -rf /tmp/debs
 
 # mcap cli
 COPY dependencies/other/mcap-linux-amd64 /usr/local/bin/mcap
@@ -173,30 +205,47 @@ RUN cmake -S "${ACADOS_SOURCE_DIR}" -B "${ACADOS_SOURCE_DIR}/build" \
     rm -rf "${ACADOS_SOURCE_DIR}/build"
 
 # CasADi is installed into a dedicated venv so it does not pollute the ROS Python environment.
+# Versions pinned to what resolved on 2026-09-06; bump deliberately.
 RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
-    "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir --upgrade pip setuptools wheel && \
+    "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir --upgrade \
+        pip==26.2.1 \
+        setuptools==84.0.0 \
+        wheel==0.48.0 && \
     "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir \
-        casadi \
-        numpy \
-        scipy \
-        matplotlib \
-        pyyaml \
-        jinja2 \
-        future && \
+        casadi==3.8.0 \
+        numpy==2.5.2 \
+        scipy==1.18.1 \
+        matplotlib==3.11.1 \
+        pyyaml==6.0.3 \
+        jinja2==3.1.6 \
+        future==1.0.0 && \
     "${ACADOS_PYTHON_ENV}/bin/pip" install --no-cache-dir -e "${ACADOS_SOURCE_DIR}/interfaces/acados_template" && \
     mkdir -p "${ACADOS_SOURCE_DIR}/bin" && \
     curl -L -o "${ACADOS_SOURCE_DIR}/bin/t_renderer" \
         "https://github.com/acados/tera_renderer/releases/download/${TERA_RENDERER_VERSION}/t_renderer-${TERA_RENDERER_VERSION}-linux-amd64" && \
     chmod +x "${ACADOS_SOURCE_DIR}/bin/t_renderer" && \
-    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')"
+    "${ACADOS_PYTHON_ENV}/bin/python" -c "import casadi, acados_template; print('casadi', casadi.__version__); print('acados_template ok')" && \
+    chown -R "${USERNAME}:${USERNAME}" "${ACADOS_SOURCE_DIR}" "${ACADOS_PYTHON_ENV}"
 
-
-# Refresh linker cache after all installs
-RUN ldconfig
+# Make the acados library visible to the dynamic linker without LD_LIBRARY_PATH, then refresh the
+# linker cache after all installs.
+RUN echo "${ACADOS_SOURCE_DIR}/lib" > /etc/ld.so.conf.d/acados.conf && ldconfig
 
 #-------------------------------------------------
-# Project Environment Setup
+# Runtime Setup
 #-------------------------------------------------
 
-WORKDIR ${DRIVERLESS_WS}
+# Image tag shown in the shell prompt. Declared last so a changing tag only rebuilds these layers.
+ARG IMAGE_TAG=dev
+ENV DRIVERLESS_IMAGE=ros2-driverless:${IMAGE_TAG}
+ENV DRIVERLESS_USER=${USERNAME}
+
+# The entrypoint starts as root, aligns ${USERNAME} to HOST_UID/HOST_GID when given and drops
+# privileges to ${USERNAME} before handing over to the ROS entrypoint. No USER instruction here on
+# purpose: the re-mapping needs root.
+COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+WORKDIR /home/${USERNAME}
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]
