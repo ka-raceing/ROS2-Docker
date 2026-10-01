@@ -229,12 +229,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python ONNX Runtime, optional but useful
-# For Ubuntu 24.04 / ROS Jazzy
-RUN python3 -m pip install --no-cache-dir --break-system-packages \
-    onnxruntime \
-    onnx
-
 # C++ ONNX Runtime
 ARG ONNXRUNTIME_VERSION=1.18.1
 
