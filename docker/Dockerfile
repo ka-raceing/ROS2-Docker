@@ -217,6 +217,45 @@ RUN python3 -m venv "${ACADOS_PYTHON_ENV}" && \
 # Make the acados library visible to the dynamic linker without LD_LIBRARY_PATH
 RUN echo "${ACADOS_SOURCE_DIR}/lib" > /etc/ld.so.conf.d/acados.conf && ldconfig
 
+# ONNX
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    wget \
+    ca-certificates \
+    python3-pip \
+    python3-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python ONNX Runtime, optional but useful
+# For Ubuntu 24.04 / ROS Jazzy
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+    onnxruntime \
+    onnx
+
+# C++ ONNX Runtime
+ARG ONNXRUNTIME_VERSION=1.18.1
+
+RUN set -eux; \
+    arch=$(dpkg --print-architecture); \
+    case "$arch" in \
+      amd64) ort_arch=x64 ;; \
+      arm64) ort_arch=aarch64 ;; \
+      *) echo "Unsupported architecture: $arch"; exit 1 ;; \
+    esac; \
+    wget -qO /tmp/ort.tgz \
+      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${ort_arch}-${ONNXRUNTIME_VERSION}.tgz"; \
+    mkdir -p /tmp/ort; \
+    tar -xzf /tmp/ort.tgz -C /tmp/ort --strip-components=1; \
+    rm /tmp/ort.tgz; \
+    cp -r /tmp/ort/include/. /usr/local/include/; \
+    libdir=$(find /tmp/ort -maxdepth 1 -type d -name 'lib*' | head -n1); \
+    cp -a "$libdir"/libonnxruntime.so* /usr/local/lib/; \
+    ldconfig; \
+    rm -rf /tmp/ort
+
 #-------------------------------------------------
 # Shell and Entrypoint Setup
 #-------------------------------------------------
